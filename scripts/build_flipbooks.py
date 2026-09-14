@@ -8,8 +8,8 @@ PDF_DIR = os.path.join(ROOT_DIR, "pdfs")
 SITE_DIR = os.path.join(ROOT_DIR, "_site")
 
 # 사이트 기본 정보 (원하시는 이름으로 수정 가능)
-SITE_NAME = "간행물 서가"
-SITE_DESC = "간행물 온라인 플립북 보관소"
+SITE_NAME = "아에타 간행물"
+SITE_DESC = "월간 아에타 간행물 보관소"
 
 HTML_TEMPLATE = """<!DOCTYPE html>
 <html lang="ko">
