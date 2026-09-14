@@ -230,7 +230,6 @@ def main():
 
         items_info.append((slug, total_pages))
 
-    # Create root index.html
     if items_info:
         items_html = "\n".join([
             f'<li><a href="{slug}/" target="_blank">{slug}</a><span class="badge">{pages}쪽</span></li>'
