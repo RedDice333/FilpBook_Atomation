@@ -6,13 +6,21 @@ from pdf2image import convert_from_path
 ROOT_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 PDF_DIR = os.path.join(ROOT_DIR, "pdfs")
 SITE_DIR = os.path.join(ROOT_DIR, "_site")
+DEFAULT_OG_IMAGE = os.path.join(ROOT_DIR, "og-preview.png")
 
 HTML_TEMPLATE = """<!DOCTYPE html>
 <html lang="ko">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-  <title>__TITLE__</title>
+  <title>__DISPLAY_TITLE__ | 아에타 월간 잡지</title>
+
+  <!-- 링크 미리보기 (Open Graph) -->
+  <meta property="og:type" content="article">
+  <meta property="og:title" content="__DISPLAY_TITLE__ | 아에타 월간 잡지">
+  <meta property="og:description" content="아에타 월간 잡지 __DISPLAY_TITLE__ 온라인 플립북 열람">
+  <meta property="og:image" content="images/page_001.webp">
+
   <script src="https://cdn.jsdelivr.net/npm/page-flip/dist/js/page-flip.browser.js"></script>
   <style>
     * { box-sizing: border-box; margin: 0; padding: 0; }
@@ -153,10 +161,9 @@ HTML_TEMPLATE = """<!DOCTYPE html>
       const el = document.getElementById('flipbook');
       const totalPages = __TOTAL_PAGES__;
 
-      // 뷰포트 비율에 맞춘 동적 크기 계산 (상하단 잘림 방지)
       const containerH = container.clientHeight;
       const baseH = Math.max(400, containerH - 20);
-      const baseW = Math.round(baseH * 0.707); // 3:4 ~ A4 비율
+      const baseW = Math.round(baseH * 0.707);
 
       const pageFlip = new St.PageFlip(el, {
         width: baseW,
@@ -169,7 +176,7 @@ HTML_TEMPLATE = """<!DOCTYPE html>
         maxShadowOpacity: 0.3,
         showCover: true,
         mobileScrollSupport: false,
-        hoverPageFlip: false // 2. 마우스 호버 넘김 비활성화
+        hoverPageFlip: false
       });
 
       pageFlip.loadFromHTML(document.querySelectorAll('.page'));
@@ -187,7 +194,6 @@ HTML_TEMPLATE = """<!DOCTYPE html>
       document.getElementById('btnPrev').addEventListener('click', () => pageFlip.flipPrev());
       document.getElementById('btnNext').addEventListener('click', () => pageFlip.flipNext());
 
-      // 3. 페이지 바로가기 (엔터키 & 버튼)
       function jumpToPage() {
         let val = parseInt(pageInput.value, 10);
         if (isNaN(val)) return;
@@ -211,7 +217,14 @@ INDEX_TEMPLATE = """<!DOCTYPE html>
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>디지털 간행물 보관소</title>
+  <title>아에타 월간 잡지</title>
+
+  <!-- 링크 미리보기 (Open Graph) -->
+  <meta property="og:type" content="website">
+  <meta property="og:title" content="아에타 월간 잡지">
+  <meta property="og:description" content="아에타 월간 간행물 보관소 및 온라인 플립북 열람">
+  <meta property="og:image" content="__OG_IMAGE__">
+
   <style>
     * { box-sizing: border-box; margin: 0; padding: 0; }
     body {
@@ -234,7 +247,6 @@ INDEX_TEMPLATE = """<!DOCTYPE html>
       font-weight: 700;
       letter-spacing: -0.5px;
     }
-    /* 5. 3:4 비율의 가지런한 서가 그리드 */
     .grid {
       display: grid;
       grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
@@ -255,7 +267,6 @@ INDEX_TEMPLATE = """<!DOCTYPE html>
       transform: translateY(-4px);
       box-shadow: 0 10px 20px rgba(0,0,0,0.12);
     }
-    /* 1. 첫 페이지 미리보기 (3:4 비율) */
     .cover-wrapper {
       width: 100%;
       aspect-ratio: 3 / 4;
@@ -293,7 +304,7 @@ INDEX_TEMPLATE = """<!DOCTYPE html>
 <body>
   <div class="container">
     <header>
-      <h1>간행물 보관소</h1>
+      <h1>아에타 월간 잡지</h1>
     </header>
     <div class="grid">
       __CARDS_HTML__
@@ -308,7 +319,12 @@ def main():
         shutil.rmtree(SITE_DIR)
     os.makedirs(SITE_DIR, exist_ok=True)
 
-    # 최신순(내림차순) 정렬: 2026-06, 2026-03 순서로 노출
+    # 대표 미리보기 이미지 복사
+    og_image_name = ""
+    if os.path.exists(DEFAULT_OG_IMAGE):
+        shutil.copy(DEFAULT_OG_IMAGE, os.path.join(SITE_DIR, "og-preview.png"))
+        og_image_name = "og-preview.png"
+
     pdf_files = sorted(glob.glob(os.path.join(PDF_DIR, "*.pdf")), reverse=True)
     cards_data = []
 
@@ -340,9 +356,12 @@ def main():
         with open(os.path.join(out_folder, "index.html"), "w", encoding="utf-8") as f:
             f.write(html_content)
 
-        # 메인 가판대용 첫 페이지 표지 경로
         cover_url = f"{slug}/images/page_001.webp"
         cards_data.append((slug, display_title, cover_url, total_pages))
+
+    # 대표 이미지가 따로 없을 경우 최신 간행물 1페이지를 대표로 사용
+    if not og_image_name and cards_data:
+        og_image_name = cards_data[0][2]
 
     if cards_data:
         cards_html = "\n".join([
@@ -363,7 +382,9 @@ def main():
     else:
         cards_html = '<p style="color: #64748b;">등록된 간행물이 없습니다. pdfs 폴더에 PDF를 추가해 주세요.</p>'
 
-    root_html = INDEX_TEMPLATE.replace("__CARDS_HTML__", cards_html)
+    root_html = INDEX_TEMPLATE.replace("__CARDS_HTML__", cards_html)\
+                               .replace("__OG_IMAGE__", og_image_name)
+
     with open(os.path.join(SITE_DIR, "index.html"), "w", encoding="utf-8") as f:
         f.write(root_html)
 
