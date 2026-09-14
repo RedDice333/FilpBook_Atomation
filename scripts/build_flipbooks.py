@@ -6,206 +6,154 @@ from pdf2image import convert_from_path
 ROOT_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 PDF_DIR = os.path.join(ROOT_DIR, "pdfs")
 SITE_DIR = os.path.join(ROOT_DIR, "_site")
-DEFAULT_OG_IMAGE = os.path.join(ROOT_DIR, "og-preview.png")
 
 HTML_TEMPLATE = """<!DOCTYPE html>
 <html lang="ko">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-  <title>__DISPLAY_TITLE__ | 아에타 월간 잡지</title>
-
-  <!-- 링크 미리보기 (Open Graph) -->
-  <meta property="og:type" content="article">
-  <meta property="og:title" content="__DISPLAY_TITLE__ | 아에타 월간 잡지">
-  <meta property="og:description" content="아에타 월간 잡지 __DISPLAY_TITLE__ 온라인 플립북 열람">
-  <meta property="og:image" content="images/page_001.webp">
-
+  <title>__TITLE__</title>
   <script src="https://cdn.jsdelivr.net/npm/page-flip/dist/js/page-flip.browser.js"></script>
   <style>
     * { box-sizing: border-box; margin: 0; padding: 0; }
     body {
-      background-color: #121212;
+      background-color: #1a1a1a;
       color: #fff;
       font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-      overflow: hidden;
       height: 100vh;
       display: flex;
       flex-direction: column;
+      overflow: hidden;
+      -webkit-font-smoothing: antialiased;
     }
     .header-bar {
       height: 48px;
       padding: 0 16px;
-      background: #1e1e1e;
+      background: #111;
       display: flex;
       justify-content: space-between;
       align-items: center;
-      border-bottom: 1px solid #333;
-      flex-shrink: 0;
-    }
-    .back-btn {
-      color: #aaa;
-      text-decoration: none;
-      font-size: 13px;
-      display: flex;
-      align-items: center;
-      gap: 4px;
-    }
-    .back-btn:hover { color: #fff; }
-    .header-title {
-      font-size: 15px;
+      font-size: 14px;
       font-weight: 600;
-      white-space: nowrap;
-      overflow: hidden;
-      text-overflow: ellipsis;
-      max-width: 60%;
+      border-bottom: 1px solid #2a2a2a;
+      flex-shrink: 0;
     }
     .container {
       flex: 1;
+      width: 100%;
+      height: calc(100vh - 100px);
       display: flex;
       justify-content: center;
       align-items: center;
-      padding: 12px;
-      overflow: hidden;
       position: relative;
+      overflow: hidden;
+      padding: 10px;
     }
     .flip-book {
-      max-width: 100%;
-      max-height: 100%;
-      box-shadow: 0 12px 36px rgba(0,0,0,0.8);
+      box-shadow: 0 12px 36px rgba(0,0,0,0.5);
       visibility: hidden;
+      transform-style: preserve-3d;
+      backface-visibility: hidden;
+      will-change: transform;
     }
     .page {
-      background-color: #fff;
-      display: flex;
-      align-items: center;
-      justify-content: center;
+      background-color: #ffffff;
+      width: 100%;
+      height: 100%;
       overflow: hidden;
+      box-shadow: inset 0 0 15px rgba(0,0,0,0.05);
     }
     .page img {
       width: 100%;
       height: 100%;
-      object-fit: contain;
+      object-fit: fill;
+      display: block;
       user-select: none;
       -webkit-user-drag: none;
     }
     .controls {
-      height: 56px;
+      height: 52px;
       padding: 0 16px;
-      background: #1e1e1e;
+      background: #111;
       display: flex;
       justify-content: center;
       align-items: center;
-      gap: 12px;
-      border-top: 1px solid #333;
+      gap: 20px;
+      border-top: 1px solid #2a2a2a;
       flex-shrink: 0;
     }
     .btn {
       background: #2a2a2a;
       border: 1px solid #444;
       color: #fff;
-      padding: 6px 14px;
+      padding: 6px 16px;
       border-radius: 6px;
       cursor: pointer;
       font-size: 13px;
+      transition: all 0.2s;
     }
     .btn:hover { background: #3a3a3a; }
-    .page-jump-box {
-      display: flex;
-      align-items: center;
-      gap: 6px;
+    .page-indicator {
       font-size: 13px;
-      color: #bbb;
-    }
-    .page-jump-input {
-      width: 48px;
-      background: #111;
-      border: 1px solid #444;
-      color: #fff;
+      color: #aaa;
+      min-width: 80px;
       text-align: center;
-      padding: 4px;
-      border-radius: 4px;
-      font-size: 13px;
-    }
-    .page-jump-input:focus {
-      outline: 1px solid #3b82f6;
+      font-variant-numeric: tabular-nums;
     }
   </style>
 </head>
 <body>
   <div class="header-bar">
-    <a href="../" class="back-btn">‹ 서가 목록</a>
-    <span class="header-title">__DISPLAY_TITLE__</span>
-    <span style="font-size: 12px; color: #777;">드래그로 넘김</span>
+    <span>__TITLE__</span>
+    <span style="color: #777; font-size: 12px;">모바일은 가로 모드를 권장합니다</span>
   </div>
-
   <div class="container" id="bookContainer">
     <div id="flipbook" class="flip-book">
       __PAGES_HTML__
     </div>
   </div>
-
   <div class="controls">
-    <button class="btn" id="btnPrev">‹ 이전</button>
-    <div class="page-jump-box">
-      <input type="number" id="pageInput" class="page-jump-input" min="1" max="__TOTAL_PAGES__" value="1">
-      <span>/ __TOTAL_PAGES__</span>
-      <button class="btn" id="btnJump" style="padding: 4px 8px; font-size: 11px;">이동</button>
-    </div>
-    <button class="btn" id="btnNext">다음 ›</button>
+    <button class="btn" id="btnPrev">이전</button>
+    <span class="page-indicator" id="pageNumber">1 / __TOTAL_PAGES__</span>
+    <button class="btn" id="btnNext">다음</button>
   </div>
 
   <script>
-    document.addEventListener('DOMContentLoaded', function() {
-      const container = document.getElementById('bookContainer');
+    window.addEventListener('load', function() {
       const el = document.getElementById('flipbook');
-      const totalPages = __TOTAL_PAGES__;
-
-      const containerH = container.clientHeight;
-      const baseH = Math.max(400, containerH - 20);
-      const baseW = Math.round(baseH * 0.707);
+      const baseWidth = 550;
+      const baseHeight = 778;
 
       const pageFlip = new St.PageFlip(el, {
-        width: baseW,
-        height: baseH,
+        width: baseWidth,
+        height: baseHeight,
         size: "stretch",
         minWidth: 280,
-        maxWidth: 1200,
-        minHeight: 380,
-        maxHeight: 1600,
-        maxShadowOpacity: 0.3,
+        maxWidth: 900,
+        minHeight: 400,
+        maxHeight: 1270,
+        drawShadow: true,
+        maxShadowOpacity: 0.4,
         showCover: true,
+        usePortrait: true,
         mobileScrollSupport: false,
-        hoverPageFlip: false
+        useMouseEvents: true,
+        flippingTime: 700
       });
 
       pageFlip.loadFromHTML(document.querySelectorAll('.page'));
       el.style.visibility = 'visible';
 
-      const pageInput = document.getElementById('pageInput');
-
-      function syncPageInput() {
+      const pageNumEl = document.getElementById('pageNumber');
+      function updatePageDisplay() {
         const current = pageFlip.getCurrentPageIndex() + 1;
-        pageInput.value = current;
+        pageNumEl.textContent = current + ' / __TOTAL_PAGES__';
       }
 
-      pageFlip.on('flip', syncPageInput);
+      pageFlip.on('flip', updatePageDisplay);
 
       document.getElementById('btnPrev').addEventListener('click', () => pageFlip.flipPrev());
       document.getElementById('btnNext').addEventListener('click', () => pageFlip.flipNext());
-
-      function jumpToPage() {
-        let val = parseInt(pageInput.value, 10);
-        if (isNaN(val)) return;
-        if (val < 1) val = 1;
-        if (val > totalPages) val = totalPages;
-        pageFlip.flip(val - 1);
-      }
-
-      document.getElementById('btnJump').addEventListener('click', jumpToPage);
-      pageInput.addEventListener('keydown', (e) => {
-        if (e.key === 'Enter') jumpToPage();
-      });
     });
   </script>
 </body>
@@ -217,99 +165,50 @@ INDEX_TEMPLATE = """<!DOCTYPE html>
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>아에타 월간 잡지</title>
-
-  <!-- 링크 미리보기 (Open Graph) -->
-  <meta property="og:type" content="website">
-  <meta property="og:title" content="아에타 월간 잡지">
-  <meta property="og:description" content="아에타 월간 간행물 보관소 및 온라인 플립북 열람">
-  <meta property="og:image" content="__OG_IMAGE__">
-
+  <title>간행물 플립북 보관소</title>
   <style>
-    * { box-sizing: border-box; margin: 0; padding: 0; }
     body {
       font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-      background: #f4f6f8;
-      color: #1e293b;
-      padding: 30px 16px;
+      max-width: 800px;
+      margin: 40px auto;
+      padding: 0 20px;
+      background: #f8fafc;
+      color: #334155;
     }
-    .container {
-      max-width: 1040px;
-      margin: 0 auto;
-    }
-    header {
-      margin-bottom: 28px;
-      border-bottom: 2px solid #e2e8f0;
-      padding-bottom: 14px;
-    }
-    h1 {
-      font-size: 24px;
-      font-weight: 700;
-      letter-spacing: -0.5px;
-    }
-    .grid {
-      display: grid;
-      grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
-      gap: 24px;
-    }
-    .card {
+    h1 { font-size: 24px; margin-bottom: 20px; border-bottom: 2px solid #e2e8f0; padding-bottom: 10px; }
+    ul { list-style: none; padding: 0; }
+    li {
       background: #fff;
-      border-radius: 12px;
-      overflow: hidden;
-      box-shadow: 0 4px 14px rgba(0,0,0,0.06);
-      transition: transform 0.2s, box-shadow 0.2s;
-      display: flex;
-      flex-direction: column;
-      text-decoration: none;
-      color: inherit;
-    }
-    .card:hover {
-      transform: translateY(-4px);
-      box-shadow: 0 10px 20px rgba(0,0,0,0.12);
-    }
-    .cover-wrapper {
-      width: 100%;
-      aspect-ratio: 3 / 4;
-      background: #e2e8f0;
-      overflow: hidden;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-    }
-    .cover-wrapper img {
-      width: 100%;
-      height: 100%;
-      object-fit: cover;
-    }
-    .card-body {
-      padding: 14px;
-      display: flex;
-      flex-direction: column;
-      gap: 6px;
-    }
-    .card-title {
-      font-size: 15px;
-      font-weight: 600;
-      color: #0f172a;
-      line-height: 1.3;
-    }
-    .card-info {
-      font-size: 12px;
-      color: #64748b;
+      border: 1px solid #e2e8f0;
+      border-radius: 8px;
+      margin-bottom: 12px;
+      padding: 16px 20px;
       display: flex;
       justify-content: space-between;
+      align-items: center;
+      transition: all 0.2s;
+    }
+    li:hover { box-shadow: 0 4px 12px rgba(0,0,0,0.05); }
+    a {
+      text-decoration: none;
+      color: #2563eb;
+      font-weight: 600;
+      font-size: 16px;
+    }
+    .badge {
+      background: #eff6ff;
+      color: #1d4ed8;
+      font-size: 12px;
+      padding: 4px 8px;
+      border-radius: 4px;
     }
   </style>
 </head>
 <body>
-  <div class="container">
-    <header>
-      <h1>아에타 월간 잡지</h1>
-    </header>
-    <div class="grid">
-      __CARDS_HTML__
-    </div>
-  </div>
+  <h1>간행물 모아보기</h1>
+  <ul>
+    __ITEM_LIST__
+  </ul>
 </body>
 </html>
 """
@@ -319,25 +218,21 @@ def main():
         shutil.rmtree(SITE_DIR)
     os.makedirs(SITE_DIR, exist_ok=True)
 
-    # 대표 미리보기 이미지 복사
-    og_image_name = ""
-    if os.path.exists(DEFAULT_OG_IMAGE):
-        shutil.copy(DEFAULT_OG_IMAGE, os.path.join(SITE_DIR, "og-preview.png"))
-        og_image_name = "og-preview.png"
+    pdf_files = glob.glob(os.path.join(PDF_DIR, "*.pdf"))
+    items_info = []
 
-    pdf_files = sorted(glob.glob(os.path.join(PDF_DIR, "*.pdf")), reverse=True)
-    cards_data = []
-
-    for pdf_path in pdf_files:
+    for pdf_path in sorted(pdf_files):
         filename = os.path.basename(pdf_path)
-        slug = os.path.splitext(filename)[0]
-        display_title = slug.replace("_", " ")
+        raw_title = os.path.splitext(filename)[0]
+        
+        # 공백(띄어쓰기)을 하이픈(-)으로 치환하여 메신저 링크 끊김 방지
+        slug = raw_title.replace(" ", "-")
 
         out_folder = os.path.join(SITE_DIR, slug)
         images_folder = os.path.join(out_folder, "images")
         os.makedirs(images_folder, exist_ok=True)
 
-        print(f"변환 중: {filename}")
+        print(f"변환 중: {filename} -> {slug}")
         images = convert_from_path(pdf_path, dpi=130)
         total_pages = len(images)
         pages_html = []
@@ -348,47 +243,30 @@ def main():
             img.save(img_full_path, "WEBP", quality=85)
             pages_html.append(f'<div class="page"><img src="images/{img_name}" alt="페이지 {idx+1}"></div>')
 
-        html_content = HTML_TEMPLATE.replace("__TITLE__", slug)\
-                                    .replace("__DISPLAY_TITLE__", display_title)\
+        # 화면 상단 타이틀은 원본 파일명(raw_title)을 유지하고 URL 폴더는 slug로 생성
+        html_content = HTML_TEMPLATE.replace("__TITLE__", raw_title)\
                                     .replace("__PAGES_HTML__", "\n      ".join(pages_html))\
                                     .replace("__TOTAL_PAGES__", str(total_pages))
 
         with open(os.path.join(out_folder, "index.html"), "w", encoding="utf-8") as f:
             f.write(html_content)
 
-        cover_url = f"{slug}/images/page_001.webp"
-        cards_data.append((slug, display_title, cover_url, total_pages))
+        items_info.append((slug, raw_title, total_pages))
 
-    # 대표 이미지가 따로 없을 경우 최신 간행물 1페이지를 대표로 사용
-    if not og_image_name and cards_data:
-        og_image_name = cards_data[0][2]
-
-    if cards_data:
-        cards_html = "\n".join([
-            f'''<a href="{slug}/" class="card">
-              <div class="cover-wrapper">
-                <img src="{cover_url}" alt="{title} 표지">
-              </div>
-              <div class="card-body">
-                <div class="card-title">{title}</div>
-                <div class="card-info">
-                  <span>디지털 간행물</span>
-                  <span>{pages}쪽</span>
-                </div>
-              </div>
-            </a>'''
-            for slug, title, cover_url, pages in cards_data
+    # 루트 index.html 목록 생성
+    if items_info:
+        items_html = "\n".join([
+            f'<li><a href="{slug}/" target="_blank">{display_title}</a><span class="badge">{pages}쪽</span></li>'
+            for slug, display_title, pages in items_info
         ])
     else:
-        cards_html = '<p style="color: #64748b;">등록된 간행물이 없습니다. pdfs 폴더에 PDF를 추가해 주세요.</p>'
+        items_html = '<li>등록된 간행물이 없습니다. pdfs 폴더에 PDF를 업로드해 주세요.</li>'
 
-    root_html = INDEX_TEMPLATE.replace("__CARDS_HTML__", cards_html)\
-                               .replace("__OG_IMAGE__", og_image_name)
-
+    root_html = INDEX_TEMPLATE.replace("__ITEM_LIST__", items_html)
     with open(os.path.join(SITE_DIR, "index.html"), "w", encoding="utf-8") as f:
         f.write(root_html)
 
-    print("전체 개선 빌드 완료!")
+    print("전체 빌드 완료!")
 
 if __name__ == "__main__":
     main()
