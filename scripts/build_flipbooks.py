@@ -1,6 +1,5 @@
 import os
 import glob
-import json
 import shutil
 from pdf2image import convert_from_path
 
@@ -13,7 +12,7 @@ HTML_TEMPLATE = """<!DOCTYPE html>
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-  <title>{title}</title>
+  <title>__TITLE__</title>
   <script src="https://cdn.jsdelivr.net/npm/page-flip/dist/js/page-flip.browser.js"></script>
   <style>
     * { box-sizing: border-box; margin: 0; padding: 0; }
@@ -94,17 +93,17 @@ HTML_TEMPLATE = """<!DOCTYPE html>
 </head>
 <body>
   <div class="header-bar">
-    <span>{title}</span>
+    <span>__TITLE__</span>
     <span style="color: #888; font-size: 12px;">마우스 드래그 또는 버튼으로 넘기기</span>
   </div>
   <div class="container">
     <div id="flipbook" class="flip-book">
-      {pages_html}
+      __PAGES_HTML__
     </div>
   </div>
   <div class="controls">
     <button class="btn" id="btnPrev">이전</button>
-    <span class="page-indicator" id="pageNumber">1 / {total_pages}</span>
+    <span class="page-indicator" id="pageNumber">1 / __TOTAL_PAGES__</span>
     <button class="btn" id="btnNext">다음</button>
   </div>
 
@@ -130,7 +129,7 @@ HTML_TEMPLATE = """<!DOCTYPE html>
       const pageNumEl = document.getElementById('pageNumber');
       function updatePageDisplay() {
         const current = pageFlip.getCurrentPageIndex() + 1;
-        pageNumEl.textContent = `${current} / {total_pages}`;
+        pageNumEl.textContent = current + ' / __TOTAL_PAGES__';
       }
 
       pageFlip.on('flip', updatePageDisplay);
@@ -190,7 +189,7 @@ INDEX_TEMPLATE = """<!DOCTYPE html>
 <body>
   <h1>간행물 모아보기</h1>
   <ul>
-    {item_list}
+    __ITEM_LIST__
   </ul>
 </body>
 </html>
@@ -212,7 +211,6 @@ def main():
         os.makedirs(images_folder, exist_ok=True)
 
         print(f"변환 중: {filename} -> {slug}")
-        # Convert PDF pages to WebP/PNG images
         images = convert_from_path(pdf_path, dpi=130)
         total_pages = len(images)
         pages_html = []
@@ -223,11 +221,9 @@ def main():
             img.save(img_full_path, "WEBP", quality=85)
             pages_html.append(f'<div class="page"><img src="images/{img_name}" alt="페이지 {idx+1}"></div>')
 
-        html_content = HTML_TEMPLATE.format(
-            title=slug,
-            pages_html="\n      ".join(pages_html),
-            total_pages=total_pages
-        )
+        html_content = HTML_TEMPLATE.replace("__TITLE__", slug)\
+                                    .replace("__PAGES_HTML__", "\n      ".join(pages_html))\
+                                    .replace("__TOTAL_PAGES__", str(total_pages))
 
         with open(os.path.join(out_folder, "index.html"), "w", encoding="utf-8") as f:
             f.write(html_content)
@@ -243,8 +239,9 @@ def main():
     else:
         items_html = '<li>등록된 간행물이 없습니다. pdfs 폴더에 PDF를 업로드해 주세요.</li>'
 
+    root_html = INDEX_TEMPLATE.replace("__ITEM_LIST__", items_html)
     with open(os.path.join(SITE_DIR, "index.html"), "w", encoding="utf-8") as f:
-        f.write(INDEX_TEMPLATE.format(item_list=items_html))
+        f.write(root_html)
 
     print("전체 빌드 완료!")
 
